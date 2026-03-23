@@ -103,9 +103,8 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
       if (response == null) return;
       final clientId = response['client_id'] as String?;
       final masterId = response['assigned_master_id'] as String?;
-      final resolvedParticipantId = _currentUserId == clientId
-          ? masterId
-          : clientId;
+      final resolvedParticipantId =
+          _currentUserId == clientId ? masterId : clientId;
 
       // Parse service_time if present
       final serviceTimeStr = response['service_time'] as String?;
@@ -144,9 +143,8 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
       final name = (response?['name'] as String?) ?? '';
       final isOnline = (response?['is_online'] as bool?) ?? false;
       final lastSeenString = response?['last_seen'] as String?;
-      final lastSeen = lastSeenString != null
-          ? DateTime.tryParse(lastSeenString)
-          : null;
+      final lastSeen =
+          lastSeenString != null ? DateTime.tryParse(lastSeenString) : null;
       if (mounted && name.isNotEmpty) {
         setState(() {
           _participantName = name;
@@ -174,7 +172,7 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
       final List<Map<String, dynamic>> loaded = rows.map((row) {
         final createdAt =
             DateTime.tryParse(row['created_at'] as String? ?? '')?.toLocal() ??
-            DateTime.now();
+                DateTime.now();
         final msgType = (row['message_type'] as String?) ?? 'text';
         final schedStartStr = row['schedule_start'] as String?;
         final schedEndStr = row['schedule_end'] as String?;
@@ -313,8 +311,7 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
             final row = payload.newRecord;
             final senderId = row['sender_id'] as String? ?? '';
             if (senderId == _currentUserId) return;
-            final createdAt =
-                DateTime.tryParse(
+            final createdAt = DateTime.tryParse(
                   row['created_at'] as String? ?? '',
                 )?.toLocal() ??
                 DateTime.now();
@@ -370,8 +367,7 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
   }
 
   void _onScroll() {
-    final atBottom =
-        _scrollController.position.pixels >=
+    final atBottom = _scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 80;
     if (atBottom != !_showScrollToBottom) {
       setState(() => _showScrollToBottom = !atBottom);
@@ -593,9 +589,8 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
     final startM = dt.minute.toString().padLeft(2, '0');
     final startPeriod = dt.hour >= 12 ? 'PM' : 'AM';
     if (end != null) {
-      final endH = end.hour > 12
-          ? end.hour - 12
-          : (end.hour == 0 ? 12 : end.hour);
+      final endH =
+          end.hour > 12 ? end.hour - 12 : (end.hour == 0 ? 12 : end.hour);
       final endM = end.minute.toString().padLeft(2, '0');
       final endPeriod = end.hour >= 12 ? 'PM' : 'AM';
       return '$month $day • $startH:$startM $startPeriod – $endH:$endM $endPeriod';
@@ -628,14 +623,11 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
   }) async {
     if (_requestId == null) return;
     try {
-      await Supabase.instance.client
-          .from('requests')
-          .update({
-            'service_time': start.toUtc().toIso8601String(),
-            'service_time_end': end?.toUtc().toIso8601String(),
-            'schedule_status': 'pending',
-          })
-          .eq('id', _requestId!);
+      await Supabase.instance.client.from('requests').update({
+        'service_time': start.toUtc().toIso8601String(),
+        'service_time_end': end?.toUtc().toIso8601String(),
+        'schedule_status': 'pending',
+      }).eq('id', _requestId!);
     } catch (_) {}
 
     if (mounted) {
@@ -732,8 +724,8 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
     try {
       final msgRequestId =
           (message['request_id'] as String?)?.isNotEmpty == true
-          ? message['request_id'] as String
-          : _requestId;
+              ? message['request_id'] as String
+              : _requestId;
       if (msgRequestId == null) return;
 
       // The proposal sender is who we send the confirmation to
@@ -763,11 +755,10 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
           'schedule_start': schedStart.toUtc().toIso8601String(),
       });
 
-      // Update request status to 'scheduled' and schedule_status to 'confirmed'
+      // Update request schedule_status to 'confirmed' (leaving main status unchanged to avoid DB constraint errors)
       await Supabase.instance.client
           .from('requests')
-          .update({'status': 'scheduled', 'schedule_status': 'confirmed'})
-          .eq('id', msgRequestId);
+          .update({'schedule_status': 'confirmed'}).eq('id', msgRequestId);
 
       // Reload full message history to reflect persisted state
       await _fetchMessages();
@@ -813,16 +804,14 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark
-          ? AppTheme.backgroundDark
-          : AppTheme.backgroundLight,
+      backgroundColor:
+          isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       appBar: AppBar(
         title: Text(_serviceTitle),
         centerTitle: false,
         elevation: 0,
-        backgroundColor: isDark
-            ? AppTheme.backgroundDark
-            : AppTheme.backgroundLight,
+        backgroundColor:
+            isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
         foregroundColor: isDark ? Colors.white : Colors.black,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -854,186 +843,190 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
                     child: _isLoadingHistory
                         ? _buildSkeletonLoader(theme, isDark)
                         : _messages.isEmpty && _serviceTime == null
-                        ? _buildEmptyStateWithScheduleCard(theme, isDark)
-                        : ListView.builder(
-                            controller: _scrollController,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 4.w,
-                              vertical: 1.h,
-                            ),
-                            itemCount:
-                                _messages.length +
-                                (_isTyping ? 1 : 0) +
-                                (_serviceTime == null ? 1 : 0) +
-                                1,
-                            itemBuilder: (ctx, index) {
-                              // First item: schedule card or scheduled info
-                              if (index == 0) {
-                                return _serviceTime == null
-                                    ? _buildScheduleCard(theme, isDark)
-                                    : _buildScheduledInfoCard(theme, isDark);
-                              }
-                              final msgIndex = index - 1;
-                              if (_isTyping && msgIndex == _messages.length) {
-                                return const TypingIndicatorWidget();
-                              }
-                              if (msgIndex >= _messages.length) {
-                                return const SizedBox.shrink();
-                              }
-                              final msg = _messages[msgIndex];
-                              final msgType =
-                                  (msg['type'] as String?) ?? 'text';
+                            ? _buildEmptyStateWithScheduleCard(theme, isDark)
+                            : ListView.builder(
+                                controller: _scrollController,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 4.w,
+                                  vertical: 1.h,
+                                ),
+                                itemCount: _messages.length +
+                                    (_isTyping ? 1 : 0) +
+                                    (_serviceTime == null ? 1 : 0) +
+                                    1,
+                                itemBuilder: (ctx, index) {
+                                  // First item: schedule card or scheduled info
+                                  if (index == 0) {
+                                    return _serviceTime == null
+                                        ? _buildScheduleCard(theme, isDark)
+                                        : _buildScheduledInfoCard(
+                                            theme, isDark);
+                                  }
+                                  final msgIndex = index - 1;
+                                  if (_isTyping &&
+                                      msgIndex == _messages.length) {
+                                    return const TypingIndicatorWidget();
+                                  }
+                                  if (msgIndex >= _messages.length) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  final msg = _messages[msgIndex];
+                                  final msgType =
+                                      (msg['type'] as String?) ?? 'text';
 
-                              // System schedule proposal message
-                              if (msgType == 'system_schedule_proposal') {
-                                final showDate =
-                                    msgIndex == 0 ||
-                                    (msg['date'] as String?) !=
-                                        (_messages[msgIndex - 1]['date']
-                                            as String?);
-                                final schedStart =
-                                    msg['scheduleStart'] as DateTime?;
-                                final schedEnd =
-                                    msg['scheduleEnd'] as DateTime?;
-                                final isFromMe =
-                                    (msg['senderId'] as String?) ==
-                                    _currentUserId;
-                                final isActive =
-                                    (msg['isActive'] as bool?) ?? false;
-                                final msgReceiverId =
-                                    (msg['receiver_id'] as String?) ?? '';
-                                return Column(
-                                  children: [
-                                    if (showDate)
-                                      MessageDateSeparatorWidget(
-                                        date: (msg['date'] as String?) ?? '',
-                                      ),
-                                    _buildScheduleProposalCard(
-                                      theme,
-                                      isDark,
-                                      msg['text'] as String? ?? '',
-                                      schedStart,
-                                      schedEnd,
-                                      isFromMe,
-                                      isActive,
-                                      msgReceiverId,
-                                      msg,
-                                    ),
-                                  ],
-                                );
-                              }
-
-                              // System schedule confirmed message
-                              if (msgType == 'system_schedule_confirmed') {
-                                final showDate =
-                                    msgIndex == 0 ||
-                                    (msg['date'] as String?) !=
-                                        (_messages[msgIndex - 1]['date']
-                                            as String?);
-                                final schedStart =
-                                    msg['scheduleStart'] as DateTime?;
-                                final schedEnd =
-                                    msg['scheduleEnd'] as DateTime?;
-                                return Column(
-                                  children: [
-                                    if (showDate)
-                                      MessageDateSeparatorWidget(
-                                        date: (msg['date'] as String?) ?? '',
-                                      ),
-                                    _buildScheduleConfirmedCard(
-                                      theme,
-                                      isDark,
-                                      msg['text'] as String? ?? '',
-                                      schedStart,
-                                      schedEnd,
-                                    ),
-                                  ],
-                                );
-                              }
-
-                              final isSender =
-                                  (msg['senderId'] as String?) ==
-                                  _currentUserId;
-                              final showDate =
-                                  msgIndex == 0 ||
-                                  (msg['date'] as String?) !=
-                                      (_messages[msgIndex - 1]['date']
-                                          as String?);
-
-                              return Column(
-                                children: [
-                                  if (showDate)
-                                    MessageDateSeparatorWidget(
-                                      date: (msg['date'] as String?) ?? '',
-                                    ),
-                                  Slidable(
-                                    key: ValueKey(msg['id']),
-                                    startActionPane: isSender
-                                        ? null
-                                        : ActionPane(
-                                            motion: const DrawerMotion(),
-                                            extentRatio: 0.2,
-                                            children: [
-                                              SlidableAction(
-                                                onPressed: (_) => setState(
-                                                  () => _replyMessage = msg,
-                                                ),
-                                                backgroundColor:
-                                                    AppTheme.secondaryLight,
-                                                foregroundColor: Colors.white,
-                                                icon: Icons.reply,
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                            ],
+                                  // System schedule proposal message
+                                  if (msgType == 'system_schedule_proposal') {
+                                    final showDate = msgIndex == 0 ||
+                                        (msg['date'] as String?) !=
+                                            (_messages[msgIndex - 1]['date']
+                                                as String?);
+                                    final schedStart =
+                                        msg['scheduleStart'] as DateTime?;
+                                    final schedEnd =
+                                        msg['scheduleEnd'] as DateTime?;
+                                    final isFromMe =
+                                        (msg['senderId'] as String?) ==
+                                            _currentUserId;
+                                    final isActive =
+                                        (msg['isActive'] as bool?) ?? false;
+                                    final msgReceiverId =
+                                        (msg['receiver_id'] as String?) ?? '';
+                                    return Column(
+                                      children: [
+                                        if (showDate)
+                                          MessageDateSeparatorWidget(
+                                            date:
+                                                (msg['date'] as String?) ?? '',
                                           ),
-                                    endActionPane: isSender
-                                        ? ActionPane(
-                                            motion: const DrawerMotion(),
-                                            extentRatio: 0.2,
-                                            children: [
-                                              SlidableAction(
-                                                onPressed: (_) => setState(
-                                                  () => _replyMessage = msg,
-                                                ),
-                                                backgroundColor:
-                                                    AppTheme.secondaryLight,
-                                                foregroundColor: Colors.white,
-                                                icon: Icons.reply,
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
+                                        _buildScheduleProposalCard(
+                                          theme,
+                                          isDark,
+                                          msg['text'] as String? ?? '',
+                                          schedStart,
+                                          schedEnd,
+                                          isFromMe,
+                                          isActive,
+                                          msgReceiverId,
+                                          msg,
+                                        ),
+                                      ],
+                                    );
+                                  }
+
+                                  // System schedule confirmed message
+                                  if (msgType == 'system_schedule_confirmed') {
+                                    final showDate = msgIndex == 0 ||
+                                        (msg['date'] as String?) !=
+                                            (_messages[msgIndex - 1]['date']
+                                                as String?);
+                                    final schedStart =
+                                        msg['scheduleStart'] as DateTime?;
+                                    final schedEnd =
+                                        msg['scheduleEnd'] as DateTime?;
+                                    return Column(
+                                      children: [
+                                        if (showDate)
+                                          MessageDateSeparatorWidget(
+                                            date:
+                                                (msg['date'] as String?) ?? '',
+                                          ),
+                                        _buildScheduleConfirmedCard(
+                                          theme,
+                                          isDark,
+                                          msg['text'] as String? ?? '',
+                                          schedStart,
+                                          schedEnd,
+                                        ),
+                                      ],
+                                    );
+                                  }
+
+                                  final isSender =
+                                      (msg['senderId'] as String?) ==
+                                          _currentUserId;
+                                  final showDate = msgIndex == 0 ||
+                                      (msg['date'] as String?) !=
+                                          (_messages[msgIndex - 1]['date']
+                                              as String?);
+
+                                  return Column(
+                                    children: [
+                                      if (showDate)
+                                        MessageDateSeparatorWidget(
+                                          date: (msg['date'] as String?) ?? '',
+                                        ),
+                                      Slidable(
+                                        key: ValueKey(msg['id']),
+                                        startActionPane: isSender
+                                            ? null
+                                            : ActionPane(
+                                                motion: const DrawerMotion(),
+                                                extentRatio: 0.2,
+                                                children: [
+                                                  SlidableAction(
+                                                    onPressed: (_) => setState(
+                                                      () => _replyMessage = msg,
+                                                    ),
+                                                    backgroundColor:
+                                                        AppTheme.secondaryLight,
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    icon: Icons.reply,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                ],
                                               ),
-                                            ],
-                                          )
-                                        : null,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        if ((msg['type'] as String?) ==
-                                            'image') {
-                                          final url =
-                                              (msg['imageUrl'] as String?) ??
-                                              '';
-                                          if (url.isNotEmpty) {
-                                            _showImageFullScreen(url);
-                                          }
-                                        }
-                                      },
-                                      child: MessageBubbleWidget(
-                                        message: msg,
-                                        isSender: isSender,
-                                        onLongPress: () =>
-                                            _onLongPressMessage(msg),
-                                        replyMessage: msg['replyTo'] != null
-                                            ? (msg['replyTo']
-                                                  as Map<String, dynamic>)
+                                        endActionPane: isSender
+                                            ? ActionPane(
+                                                motion: const DrawerMotion(),
+                                                extentRatio: 0.2,
+                                                children: [
+                                                  SlidableAction(
+                                                    onPressed: (_) => setState(
+                                                      () => _replyMessage = msg,
+                                                    ),
+                                                    backgroundColor:
+                                                        AppTheme.secondaryLight,
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    icon: Icons.reply,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                ],
+                                              )
                                             : null,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            if ((msg['type'] as String?) ==
+                                                'image') {
+                                              final url = (msg['imageUrl']
+                                                      as String?) ??
+                                                  '';
+                                              if (url.isNotEmpty) {
+                                                _showImageFullScreen(url);
+                                              }
+                                            }
+                                          },
+                                          child: MessageBubbleWidget(
+                                            message: msg,
+                                            isSender: isSender,
+                                            onLongPress: () =>
+                                                _onLongPressMessage(msg),
+                                            replyMessage: msg['replyTo'] != null
+                                                ? (msg['replyTo']
+                                                    as Map<String, dynamic>)
+                                                : null,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
+                                    ],
+                                  );
+                                },
+                              ),
                   ),
                 ),
                 MessageInputWidget(
@@ -1257,9 +1250,8 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
     String receiverId,
     Map<String, dynamic> message,
   ) {
-    final timeLabel = schedStart != null
-        ? _formatScheduledLabel(schedStart, schedEnd)
-        : '';
+    final timeLabel =
+        schedStart != null ? _formatScheduledLabel(schedStart, schedEnd) : '';
 
     // Receiver detection: the receiver is whoever did NOT send this message.
     // Use sender_id field directly for deterministic comparison.
@@ -1395,9 +1387,8 @@ class _RealTimeMessagingState extends State<RealTimeMessaging> {
     DateTime? schedStart,
     DateTime? schedEnd,
   ) {
-    final timeLabel = schedStart != null
-        ? _formatScheduledLabel(schedStart, schedEnd)
-        : '';
+    final timeLabel =
+        schedStart != null ? _formatScheduledLabel(schedStart, schedEnd) : '';
     return Center(
       child: Container(
         margin: EdgeInsets.symmetric(vertical: 1.h, horizontal: 4.w),
@@ -1679,8 +1670,7 @@ class _ServiceTimePickerSheetState extends State<_ServiceTimePickerSheet> {
   Future<void> _pickEndTime() async {
     final picked = await showTimePicker(
       context: context,
-      initialTime:
-          _selectedEndTime ??
+      initialTime: _selectedEndTime ??
           TimeOfDay(
             hour: (_selectedTime.hour + 2) % 24,
             minute: _selectedTime.minute,
@@ -1757,9 +1747,8 @@ class _ServiceTimePickerSheetState extends State<_ServiceTimePickerSheet> {
               width: double.infinity,
               padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
               decoration: BoxDecoration(
-                color: isDark
-                    ? AppTheme.backgroundDark
-                    : AppTheme.backgroundLight,
+                color:
+                    isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
                 borderRadius: BorderRadius.circular(10.0),
                 border: Border.all(
                   color: isDark ? AppTheme.dividerDark : AppTheme.borderLight,
@@ -1813,9 +1802,8 @@ class _ServiceTimePickerSheetState extends State<_ServiceTimePickerSheet> {
               width: double.infinity,
               padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
               decoration: BoxDecoration(
-                color: isDark
-                    ? AppTheme.backgroundDark
-                    : AppTheme.backgroundLight,
+                color:
+                    isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
                 borderRadius: BorderRadius.circular(10.0),
                 border: Border.all(
                   color: isDark ? AppTheme.dividerDark : AppTheme.borderLight,
@@ -1869,9 +1857,8 @@ class _ServiceTimePickerSheetState extends State<_ServiceTimePickerSheet> {
               width: double.infinity,
               padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
               decoration: BoxDecoration(
-                color: isDark
-                    ? AppTheme.backgroundDark
-                    : AppTheme.backgroundLight,
+                color:
+                    isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
                 borderRadius: BorderRadius.circular(10.0),
                 border: Border.all(
                   color: isDark ? AppTheme.dividerDark : AppTheme.borderLight,
@@ -1885,8 +1872,8 @@ class _ServiceTimePickerSheetState extends State<_ServiceTimePickerSheet> {
                     color: _selectedEndTime != null
                         ? AppTheme.primaryLight
                         : (isDark
-                              ? AppTheme.textMediumEmphasisDark
-                              : AppTheme.textMediumEmphasisLight),
+                            ? AppTheme.textMediumEmphasisDark
+                            : AppTheme.textMediumEmphasisLight),
                   ),
                   SizedBox(width: 3.w),
                   Expanded(
@@ -1900,8 +1887,8 @@ class _ServiceTimePickerSheetState extends State<_ServiceTimePickerSheet> {
                         color: _selectedEndTime != null
                             ? null
                             : (isDark
-                                  ? AppTheme.textMediumEmphasisDark
-                                  : AppTheme.textMediumEmphasisLight),
+                                ? AppTheme.textMediumEmphasisDark
+                                : AppTheme.textMediumEmphasisLight),
                       ),
                     ),
                   ),
@@ -1941,9 +1928,8 @@ class _ServiceTimePickerSheetState extends State<_ServiceTimePickerSheet> {
                         ? AppTheme.textHighEmphasisDark
                         : AppTheme.textHighEmphasisLight,
                     side: BorderSide(
-                      color: isDark
-                          ? AppTheme.dividerDark
-                          : AppTheme.borderLight,
+                      color:
+                          isDark ? AppTheme.dividerDark : AppTheme.borderLight,
                     ),
                     padding: EdgeInsets.symmetric(vertical: 1.5.h),
                     shape: RoundedRectangleBorder(

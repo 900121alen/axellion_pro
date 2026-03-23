@@ -69,7 +69,7 @@ class AppRoutes {
     clientMessages: (context) => const ClientMessagesScreen(),
     serviceCategories: (context) => const ServiceCategoriesScreen(),
     clientRequestDetails: (context) {
-      final args = ModalRoute.of(context)!.settings.arguments;
+      final args = ModalRoute.of(context)?.settings.arguments;
       final requestId = (args is Map<String, dynamic>)
           ? args['requestId'] as String? ?? ''
           : args?.toString() ?? '';

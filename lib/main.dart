@@ -14,33 +14,59 @@ void main() async {
   try {
     await SupabaseService.initialize();
   } catch (e) {
-    debugPrint('Failed to initialize Supabase: $e');
+    debugPrint('CRITICAL ERROR: Failed to initialize Supabase: $e');
+
+    // Launch a fallback error screen instead of the main app
+    runApp(
+      const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Critical Configuration Error.\nCould not connect to the database.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.red, fontSize: 16),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return; // Abort further execution
   }
 
   bool hasShownError = false;
 
   // 🚨 CRITICAL: Custom error handling - DO NOT REMOVE
   ErrorWidget.builder = (FlutterErrorDetails details) {
+    if (kDebugMode) {
+      // In debug mode, always show the error widget so developers can fix it
+      return CustomErrorWidget(errorDetails: details);
+    }
+
+    // In release mode, use the hide-after-delay logic
     if (!hasShownError) {
       hasShownError = true;
 
-      // Reset flag after 3 seconds to allow error widget on new screens
-      Future.delayed(Duration(seconds: 5), () {
+      // Reset flag after 5 seconds to allow error widget on new screens
+      Future.delayed(const Duration(seconds: 5), () {
         hasShownError = false;
       });
 
       return CustomErrorWidget(errorDetails: details);
     }
-    return SizedBox.shrink();
+
+    return const SizedBox.shrink();
   };
 
   // 🚨 CRITICAL: Device orientation lock - DO NOT REMOVE
-  // Skipped on web: SystemChrome orientation APIs are no-ops on web
-  // and wrapping runApp in Future.wait causes unnecessary delay.
   if (!kIsWeb) {
     await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -68,6 +94,25 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           routes: AppRoutes.routes,
           initialRoute: AppRoutes.initial,
+          // Strip query parameters from route names on Flutter Web
+          // (preview environments append ?_cb=... for cache-busting)
+          onGenerateRoute: (settings) {
+            final rawName = settings.name ?? '/';
+            final cleanName = rawName.contains('?')
+                ? rawName.substring(0, rawName.indexOf('?'))
+                : rawName;
+            final builder = AppRoutes.routes[cleanName];
+            if (builder != null) {
+              return MaterialPageRoute(
+                builder: builder,
+                settings: RouteSettings(
+                  name: cleanName,
+                  arguments: settings.arguments,
+                ),
+              );
+            }
+            return null;
+          },
         );
       },
     );
