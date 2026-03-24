@@ -5,6 +5,8 @@ import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_export.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/custom_icon_widget.dart';
 import './widgets/available_lead_card_widget.dart';
 
 class AvailableLeadsScreen extends StatefulWidget {
@@ -76,8 +78,8 @@ class _AvailableLeadsScreenState extends State<AvailableLeadsScreen> {
 
       if ((updateResponse as List).isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Lead already taken'),
+          SnackBar(
+            content: Text('DB Error: Lead no longer available'),
             backgroundColor: Colors.red,
           ),
         );
@@ -94,10 +96,7 @@ class _AvailableLeadsScreenState extends State<AvailableLeadsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Purchase failed. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('DB Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
