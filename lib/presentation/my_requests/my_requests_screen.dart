@@ -643,19 +643,24 @@ class _RequestCard extends StatelessWidget {
     final preferredDate = request['preferred_date'] as String?;
     final preferredTime = request['preferred_time'] as String?;
 
+    // Determine scheduled state from actual data, not just status
+    final bool isScheduled = assignedMasterId != null &&
+        serviceTime != null &&
+        serviceTime.isNotEmpty;
+
     // Compute merged date/time label
     String scheduledDateTime = '';
     String dateTimeLabel = '';
-    if (status == 'scheduled') {
+    if (isScheduled) {
       dateTimeLabel = 'Scheduled service date and time';
       scheduledDateTime = formatServiceTime(serviceTime, serviceTimeEnd);
     } else {
       dateTimeLabel = 'Preferred service date and time';
-      // Combine preferred_date + preferred_time strictly
-      final datePart = preferredDate != null && preferredDate.isNotEmpty
+      // Combine preferred_date + preferred_time strictly — never use preferred_date_time
+      final datePart = (preferredDate != null && preferredDate.isNotEmpty)
           ? preferredDate
           : '';
-      final timePart = preferredTime != null && preferredTime.isNotEmpty
+      final timePart = (preferredTime != null && preferredTime.isNotEmpty)
           ? preferredTime
           : '';
       if (datePart.isNotEmpty && timePart.isNotEmpty) {
@@ -664,6 +669,8 @@ class _RequestCard extends StatelessWidget {
         scheduledDateTime = datePart;
       } else if (timePart.isNotEmpty) {
         scheduledDateTime = timePart;
+      } else {
+        scheduledDateTime = '';
       }
     }
 
@@ -941,12 +948,14 @@ class _RequestCard extends StatelessWidget {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color:
-                                const Color(0xFFF44336).withValues(alpha: 0.08),
+                            color: const Color(
+                              0xFFF44336,
+                            ).withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(8.0),
                             border: Border.all(
-                              color: const Color(0xFFF44336)
-                                  .withValues(alpha: 0.3),
+                              color: const Color(
+                                0xFFF44336,
+                              ).withValues(alpha: 0.3),
                             ),
                           ),
                           child: Row(

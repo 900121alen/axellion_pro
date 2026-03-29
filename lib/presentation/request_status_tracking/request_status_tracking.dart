@@ -102,6 +102,12 @@ class _RequestStatusTrackingState extends State<RequestStatusTracking>
   }
 
   int get _activeStepIndex {
+    // Use isScheduled (data-driven) to determine if we're at the scheduled step
+    if (_isScheduled &&
+        _currentStatus != 'completed' &&
+        _currentStatus != 'cancelled') {
+      return 2;
+    }
     switch (_currentStatus.toLowerCase()) {
       case 'searching':
       case 'searching_master':
@@ -129,16 +135,21 @@ class _RequestStatusTrackingState extends State<RequestStatusTracking>
   bool get _showMaster =>
       _currentStatus == 'assigned' ||
       _currentStatus == 'scheduled' ||
-      _currentStatus == 'completed';
+      _currentStatus == 'completed' ||
+      (_masterData.isNotEmpty && _scheduleStart.isNotEmpty);
+
+  // isScheduled: determined by actual data presence, not just status
+  bool get _isScheduled => _masterData.isNotEmpty && _scheduleStart.isNotEmpty;
 
   bool get _isCancelVisible =>
       _currentStatus == 'searching' ||
       _currentStatus == 'searching_master' ||
       _currentStatus == 'assigned' ||
-      _currentStatus == 'scheduled';
+      _currentStatus == 'scheduled' ||
+      _isScheduled;
 
   bool get _isCancelDisabled {
-    if (_currentStatus != 'scheduled') return false;
+    if (!_isScheduled) return false;
     if (_scheduleStart.isEmpty) return false;
     try {
       final scheduleStart = DateTime.parse(_scheduleStart).toLocal();
@@ -405,6 +416,12 @@ class _RequestStatusTrackingState extends State<RequestStatusTracking>
   }
 
   String _displayStatus() {
+    // If data shows scheduled (master assigned + service_time set), show scheduled label
+    if (_isScheduled &&
+        _currentStatus != 'completed' &&
+        _currentStatus != 'cancelled') {
+      return 'Service Scheduled';
+    }
     switch (_currentStatus.toLowerCase()) {
       case 'searching':
       case 'searching_master':
@@ -594,7 +611,9 @@ class _RequestStatusTrackingState extends State<RequestStatusTracking>
                 if (_scheduleStart.isNotEmpty) ...[
                   SizedBox(height: 0.3.h),
                   Text(
-                    'Scheduled: ${_formatScheduleTime(_scheduleStart, _scheduleEnd)}',
+                    _isScheduled
+                        ? 'Scheduled: ${_formatScheduleTime(_scheduleStart, _scheduleEnd)}'
+                        : 'Preferred: $_scheduleStart',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: statusColor,
                       fontWeight: FontWeight.w500,
