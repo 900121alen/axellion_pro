@@ -1,12 +1,16 @@
-// Web stub for path_provider — provides no-op implementations
+// Web stub for path_provider — provides safe no-op implementations
 // so the package is not imported on Flutter Web builds.
+// Returns a dummy object that satisfies callers without crashing.
 
-Future<dynamic> getTemporaryDirectory() async {
-  throw UnsupportedError('getTemporaryDirectory is not supported on web.');
+class _WebDirectory {
+  final String path;
+  const _WebDirectory(this.path);
 }
 
-Future<dynamic> getApplicationDocumentsDirectory() async {
-  throw UnsupportedError(
-    'getApplicationDocumentsDirectory is not supported on web.',
-  );
+Future<_WebDirectory> getTemporaryDirectory() async {
+  return const _WebDirectory('/tmp');
+}
+
+Future<_WebDirectory> getApplicationDocumentsDirectory() async {
+  return const _WebDirectory('/documents');
 }

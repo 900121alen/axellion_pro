@@ -272,35 +272,33 @@ class _ClientRequestDetailsScreenState
         : 'Not specified';
 
     // Compute scheduled date & time value
-    final String? serviceTimeRaw = req['service_time'] as String?;
-    final bool isScheduled = assignedMasterId != null &&
-        serviceTimeRaw != null &&
-        serviceTimeRaw.isNotEmpty;
+    final status = req['status'] as String?;
+    final bool isScheduled = status == 'scheduled';
 
     String dateTimeLabel;
     String dateTimeValue;
 
     if (isScheduled) {
       dateTimeLabel = 'SCHEDULED SERVICE DATE & TIME';
-      if (serviceTimeRaw.isNotEmpty) {
+      final serviceTime = req['service_time'] as String?;
+      if (serviceTime != null && serviceTime.isNotEmpty) {
         dateTimeValue =
-            '${_formatDate(serviceTimeRaw)} ${serviceTimeRaw.contains('T') ? serviceTimeRaw.split('T').last.substring(0, 5) : ''}';
+            '${_formatDate(serviceTime)} ${serviceTime.contains('T') ? serviceTime.split('T').last.substring(0, 5) : ''}';
       } else {
         dateTimeValue = 'Not specified';
       }
     } else {
       dateTimeLabel = 'PREFERRED DATE & TIME';
-      // Use only preferred_date and preferred_time — never use preferred_date_time
-      final rawDate = req['preferred_date'] as String?;
-      final rawTime = req['preferred_time'] as String?;
-      final datePart = (rawDate != null && rawDate.isNotEmpty) ? rawDate : '';
-      final timePart = (rawTime != null && rawTime.isNotEmpty) ? rawTime : '';
-      if (datePart.isNotEmpty && timePart.isNotEmpty) {
-        dateTimeValue = '$datePart • $timePart';
-      } else if (datePart.isNotEmpty) {
-        dateTimeValue = datePart;
-      } else if (timePart.isNotEmpty) {
-        dateTimeValue = timePart;
+      final prefDate = _formatDate(req['preferred_date'] as String?);
+      final prefTime = (req['preferred_time'] as String?)?.isNotEmpty == true
+          ? req['preferred_time'] as String
+          : 'Flexible';
+      final hasDate = prefDate != 'Not specified';
+      final hasTime = prefTime != 'Flexible' || hasDate;
+      if (hasDate) {
+        dateTimeValue = '$prefDate · $prefTime';
+      } else if (prefTime != 'Flexible') {
+        dateTimeValue = prefTime;
       } else {
         dateTimeValue = 'Not specified';
       }
@@ -628,7 +626,11 @@ class _ScheduledDateTimeCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.calendar_today, color: Color(0xFF5B8ECC), size: 20),
+          const Icon(
+            Icons.calendar_today,
+            color: Color(0xFF5B8ECC),
+            size: 20,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -665,7 +667,10 @@ class _TechnicianCard extends StatelessWidget {
   final String? assignedMasterId;
   final String? masterName;
 
-  const _TechnicianCard({this.assignedMasterId, this.masterName});
+  const _TechnicianCard({
+    this.assignedMasterId,
+    this.masterName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -682,7 +687,11 @@ class _TechnicianCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.person, color: Color(0xFF5B8ECC), size: 20),
+          const Icon(
+            Icons.person,
+            color: Color(0xFF5B8ECC),
+            size: 20,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_export.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/custom_icon_widget.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,6 +25,7 @@ class _SplashScreenState extends State<SplashScreen>
   bool _showRetry = false;
   bool _isInitializing = true;
   double _progress = 0.0;
+  Timer? _timeoutTimer;
 
   @override
   void initState() {
@@ -54,6 +58,13 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _startInitialization() async {
+    // Timeout after 5 seconds — stored so it can be cancelled on dispose
+    _timeoutTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted && _isInitializing) {
+        setState(() => _showRetry = true);
+      }
+    });
+
     try {
       // Step 1: Check auth status
       await _updateProgress(0.2, 600);
@@ -64,23 +75,19 @@ class _SplashScreenState extends State<SplashScreen>
       // Step 4: Prepare cached data
       await _updateProgress(1.0, 500);
 
+      _timeoutTimer?.cancel();
+
       if (mounted) {
         setState(() => _isInitializing = false);
         await Future.delayed(const Duration(milliseconds: 400));
         _navigateNext();
       }
     } catch (_) {
+      _timeoutTimer?.cancel();
       if (mounted) {
         setState(() => _showRetry = true);
       }
     }
-
-    // Timeout after 5 seconds
-    Future.delayed(const Duration(seconds: 5), () {
-      if (mounted && _isInitializing) {
-        setState(() => _showRetry = true);
-      }
-    });
   }
 
   Future<void> _updateProgress(double target, int ms) async {
@@ -151,6 +158,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _retryInitialization() {
+    _timeoutTimer?.cancel();
     setState(() {
       _showRetry = false;
       _isInitializing = true;
@@ -161,6 +169,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    _timeoutTimer?.cancel();
     _logoAnimController.dispose();
     _fadeAnimController.dispose();
     super.dispose();
