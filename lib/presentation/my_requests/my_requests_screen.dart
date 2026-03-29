@@ -640,7 +640,32 @@ class _RequestCard extends StatelessWidget {
     final requestId = request['id'] as String?;
     final serviceTime = request['service_time'] as String?;
     final serviceTimeEnd = request['service_time_end'] as String?;
-    final scheduleText = formatServiceTime(serviceTime, serviceTimeEnd);
+    final preferredDate = request['preferred_date'] as String?;
+    final preferredTime = request['preferred_time'] as String?;
+
+    // Compute merged date/time label
+    String scheduledDateTime = '';
+    String dateTimeLabel = '';
+    if (status == 'scheduled') {
+      dateTimeLabel = 'Scheduled service date and time';
+      scheduledDateTime = formatServiceTime(serviceTime, serviceTimeEnd);
+    } else {
+      dateTimeLabel = 'Preferred service date and time';
+      // Combine preferred_date + preferred_time strictly
+      final datePart = preferredDate != null && preferredDate.isNotEmpty
+          ? preferredDate
+          : '';
+      final timePart = preferredTime != null && preferredTime.isNotEmpty
+          ? preferredTime
+          : '';
+      if (datePart.isNotEmpty && timePart.isNotEmpty) {
+        scheduledDateTime = '$datePart • $timePart';
+      } else if (datePart.isNotEmpty) {
+        scheduledDateTime = datePart;
+      } else if (timePart.isNotEmpty) {
+        scheduledDateTime = timePart;
+      }
+    }
 
     final badgeColor = _statusColor(status);
     final accent = _accentColor(status);
@@ -817,102 +842,133 @@ class _RequestCard extends StatelessWidget {
 
                       const SizedBox(height: 10),
 
-                      // Row 3: Master name or searching indicator
-                      if (isAssigned && masterName != null) ...[
-                        Row(
-                          children: [
-                            Container(
-                              width: 26,
-                              height: 26,
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF7B6FAD,
-                                ).withValues(alpha: 0.12),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(
-                                    0xFF7B6FAD,
-                                  ).withValues(alpha: 0.28),
-                                  width: 1,
+                      // Row 3: Service Date & Time (combined)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.calendar_today,
+                            size: 15,
+                            color: Color(0xFF5B8ECC),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '$dateTimeLabel:',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF5A5A7A),
+                                  ),
                                 ),
-                              ),
-                              child: const Center(
-                                child: CustomIconWidget(
-                                  iconName: 'person',
-                                  color: Color(0xFF7B6FAD),
-                                  size: 14,
+                                const SizedBox(height: 3),
+                                Text(
+                                  scheduledDateTime.isNotEmpty
+                                      ? scheduledDateTime
+                                      : 'Not specified',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF1A1A2A),
+                                    height: 1.3,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.visible,
+                                  softWrap: true,
                                 ),
-                              ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              masterName,
-                              style: GoogleFonts.inter(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF7B6FAD),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ] else ...[
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: const Color(
-                                  0xFFFF9800,
-                                ).withValues(alpha: 0.8),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Searching for master...',
-                              style: GoogleFonts.inter(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(
-                                  0xFFFF9800,
-                                ).withValues(alpha: 0.85),
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
 
-                      // Schedule info row
-                      if (scheduleText.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.calendar_today,
-                              size: 14,
-                              color: Color(0xFF4CAF50),
+                      // Row 4: Technician
+                      const SizedBox(height: 6),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.person,
+                            size: 15,
+                            color: Color(0xFF7B6FAD),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Technician: ',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF5A5A7A),
                             ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                scheduleText,
-                                style: GoogleFonts.inter(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF4CAF50),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                          ),
+                          Expanded(
+                            child:
+                                assignedMasterId != null && masterName != null
+                                    ? Text(
+                                        masterName,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF7B6FAD),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      )
+                                    : Text(
+                                        'Searching for technician...',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w400,
+                                          color: const Color(0xFFFF9800),
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                          ),
+                        ],
+                      ),
 
                       // Row 5: Action buttons
                       const SizedBox(height: 12),
-                      if (isAssigned && requestId != null) ...[
+                      if (status == 'cancelled') ...[
+                        // Cancelled banner
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFFF44336).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8.0),
+                            border: Border.all(
+                              color: const Color(0xFFF44336)
+                                  .withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.cancel_outlined,
+                                size: 16,
+                                color: Color(0xFFF44336),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'This request has been cancelled',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFFF44336),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (isAssigned && requestId != null) ...[
                         Row(
                           children: [
                             Expanded(
@@ -963,8 +1019,8 @@ class _RequestCard extends StatelessWidget {
                                     MaterialPageRoute(
                                       builder: (_) =>
                                           ClientRequestDetailsScreen(
-                                            requestId: requestId,
-                                          ),
+                                        requestId: requestId,
+                                      ),
                                     ),
                                   );
                                 },

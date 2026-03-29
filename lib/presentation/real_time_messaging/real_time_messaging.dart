@@ -7,8 +7,6 @@ import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_export.dart';
-import '../../theme/app_theme.dart';
-import '../../widgets/custom_icon_widget.dart';
 import './widgets/contact_header_widget.dart';
 import './widgets/image_preview_widget.dart';
 import './widgets/message_bubble_widget.dart';

@@ -22,6 +22,7 @@ class _ClientRequestDetailsScreenState
   Map<String, dynamic>? _request;
   bool _isLoading = true;
   String? _error;
+  String? _masterName;
 
   static const Color _bg = Color(0xFFEEEFF4);
   static const Color _cardBg = Color(0xFFFFFFFF);
@@ -44,13 +45,28 @@ class _ClientRequestDetailsScreenState
       final data = await Supabase.instance.client
           .from('requests')
           .select(
-            'category_name, service_name, status, vehicle_info, description, address_full, preferred_date, preferred_time, media_url, assigned_master_id, created_at',
+            'category_name, service_name, status, vehicle_info, description, address_full, preferred_date, preferred_time, service_time, media_url, assigned_master_id, created_at',
           )
           .eq('id', widget.requestId)
           .single();
+
+      String? fetchedMasterName;
+      final masterId = data['assigned_master_id'] as String?;
+      if (masterId != null && masterId.isNotEmpty) {
+        try {
+          final masterData = await Supabase.instance.client
+              .from('users')
+              .select('name')
+              .eq('id', masterId)
+              .maybeSingle();
+          fetchedMasterName = masterData?['name'] as String?;
+        } catch (_) {}
+      }
+
       if (mounted) {
         setState(() {
           _request = Map<String, dynamic>.from(data);
+          _masterName = fetchedMasterName;
           _isLoading = false;
         });
       }
@@ -255,6 +271,39 @@ class _ClientRequestDetailsScreenState
         ? req['category_name'] as String
         : 'Not specified';
 
+    // Compute scheduled date & time value
+    final status = req['status'] as String?;
+    final bool isScheduled = status == 'scheduled';
+
+    String dateTimeLabel;
+    String dateTimeValue;
+
+    if (isScheduled) {
+      dateTimeLabel = 'SCHEDULED SERVICE DATE & TIME';
+      final serviceTime = req['service_time'] as String?;
+      if (serviceTime != null && serviceTime.isNotEmpty) {
+        dateTimeValue =
+            '${_formatDate(serviceTime)} ${serviceTime.contains('T') ? serviceTime.split('T').last.substring(0, 5) : ''}';
+      } else {
+        dateTimeValue = 'Not specified';
+      }
+    } else {
+      dateTimeLabel = 'PREFERRED DATE & TIME';
+      final prefDate = _formatDate(req['preferred_date'] as String?);
+      final prefTime = (req['preferred_time'] as String?)?.isNotEmpty == true
+          ? req['preferred_time'] as String
+          : 'Flexible';
+      final hasDate = prefDate != 'Not specified';
+      final hasTime = prefTime != 'Flexible' || hasDate;
+      if (hasDate) {
+        dateTimeValue = '$prefDate · $prefTime';
+      } else if (prefTime != 'Flexible') {
+        dateTimeValue = prefTime;
+      } else {
+        dateTimeValue = 'Not specified';
+      }
+    }
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
@@ -286,20 +335,15 @@ class _ClientRequestDetailsScreenState
               value: (req['address_full'] as String?) ?? 'Not specified',
             ),
             const SizedBox(height: 14),
-            _InfoCard(
-              label: 'SERVICE DATE',
-              value: _formatDate(req['preferred_date'] as String?),
-            ),
+            _ScheduledDateTimeCard(label: dateTimeLabel, value: dateTimeValue),
             const SizedBox(height: 14),
-            _InfoCard(
-              label: 'PREFERRED TIME',
-              value: (req['preferred_time'] as String?) ?? 'Flexible',
+            _TechnicianCard(
+              assignedMasterId: assignedMasterId,
+              masterName: _masterName,
             ),
             const SizedBox(height: 14),
             _PhotosCard(mediaUrls: mediaUrls),
             if (assignedMasterId != null) ...[
-              const SizedBox(height: 14),
-              _TechnicianCard(),
               const SizedBox(height: 14),
               _OpenChatButton(
                 onTap: () {
@@ -567,8 +611,11 @@ class _PhotosCard extends StatelessWidget {
 
 // ─── Technician Card ──────────────────────────────────────────────────────────
 
-class _TechnicianCard extends StatelessWidget {
-  const _TechnicianCard();
+class _ScheduledDateTimeCard extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ScheduledDateTimeCard({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -577,44 +624,102 @@ class _TechnicianCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: _cardDecoration(),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: const Color(0xFF5B8ECC).withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: const Color(0xFF5B8ECC).withValues(alpha: 0.3),
-              ),
-            ),
-            child: const Center(
-              child: Icon(Icons.person, color: Color(0xFF5B8ECC), size: 22),
-            ),
+          const Icon(
+            Icons.calendar_today,
+            color: Color(0xFF5B8ECC),
+            size: 20,
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'TECHNICIAN',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF5A5A7A),
-                  letterSpacing: 0.8,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF5A5A7A),
+                    letterSpacing: 0.8,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Technician assigned',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1A1A2A),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1A1A2A),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TechnicianCard extends StatelessWidget {
+  final String? assignedMasterId;
+  final String? masterName;
+
+  const _TechnicianCard({
+    this.assignedMasterId,
+    this.masterName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isSearching =
+        assignedMasterId == null || assignedMasterId!.isEmpty;
+    final String displayName = isSearching
+        ? 'Not assigned'
+        : (masterName?.isNotEmpty == true ? masterName! : 'Not assigned');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration(),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.person,
+            color: Color(0xFF5B8ECC),
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'TECHNICIAN',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF5A5A7A),
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  displayName,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: isSearching ? FontWeight.w500 : FontWeight.w700,
+                    color: isSearching
+                        ? const Color(0xFF8888AA)
+                        : const Color(0xFF1A1A2A),
+                    fontStyle: FontStyle.normal,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -199,8 +199,8 @@ class _RequestStatusTrackingState extends State<RequestStatusTracking>
           callback: (payload) {
             final newRow = payload.newRecord;
             if (newRow.isEmpty) return;
-            final status = (newRow['status'] as String? ?? _currentStatus)
-                .toLowerCase();
+            final status =
+                (newRow['status'] as String? ?? _currentStatus).toLowerCase();
             final serviceName =
                 newRow['service_name'] as String? ?? _serviceName;
             final serviceTime =
@@ -239,8 +239,8 @@ class _RequestStatusTrackingState extends State<RequestStatusTracking>
         return;
       }
 
-      final status = (response['status'] as String? ?? 'searching')
-          .toLowerCase();
+      final status =
+          (response['status'] as String? ?? 'searching').toLowerCase();
       final serviceName = response['service_name'] as String? ?? '';
       final serviceTime = response['service_time'] as String? ?? '';
       final serviceTimeEnd = response['service_time_end'] as String? ?? '';
@@ -313,54 +313,35 @@ class _RequestStatusTrackingState extends State<RequestStatusTracking>
     );
   }
 
-  void _handleCancel() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Cancel Request?'),
-        content: const Text(
-          'Are you sure you want to cancel this service request?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('No'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Request cancelled successfully.'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            style: TextButton.styleFrom(foregroundColor: AppTheme.errorLight),
-            child: const Text('Yes, Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _cancelRequest() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cancel Request?'),
-        content: const Text('Are you sure you want to cancel this service?'),
+        title: Text(
+          'Cancel Request?',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Are you sure you want to cancel this request?',
+          style: GoogleFonts.inter(fontSize: 15),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Keep Request'),
+            child: Text(
+              'No, Keep It',
+              style: GoogleFonts.inter(color: const Color(0xFF5B8ECC)),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFFE53935),
             ),
-            child: const Text('Cancel Service'),
+            child: Text(
+              'Yes, Cancel',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -371,11 +352,14 @@ class _RequestStatusTrackingState extends State<RequestStatusTracking>
     try {
       await Supabase.instance.client
           .from('requests')
-          .update({'status': 'cancelled'})
-          .eq('id', widget.requestId!);
+          .update({'status': 'cancelled'}).eq('id', widget.requestId!);
 
-      // Re-fetch from DB to get the authoritative status
-      await _loadRequestData();
+      // Update local state immediately
+      if (mounted) {
+        setState(() {
+          _currentStatus = 'cancelled';
+        });
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -496,6 +480,11 @@ class _RequestStatusTrackingState extends State<RequestStatusTracking>
                               _buildStatusHeader(theme),
                               SizedBox(height: 2.h),
                               _buildTimelineSection(theme),
+                              if (_currentStatus.toLowerCase() ==
+                                  'cancelled') ...[
+                                SizedBox(height: 2.h),
+                                _buildCancelledBanner(theme),
+                              ],
                               if (_showMaster && _masterData.isNotEmpty) ...[
                                 SizedBox(height: 2.h),
                                 AssignedMasterWidget(
@@ -513,13 +502,14 @@ class _RequestStatusTrackingState extends State<RequestStatusTracking>
               ),
             ),
           ),
-          ActionButtonsWidget(
-            currentStatus: _currentStatus,
-            onCancel: _handleCancel,
-            onContact: _handleContact,
-            onMarkComplete: _handleMarkComplete,
-            onRelist: _handleRelist,
-          ),
+          if (_currentStatus.toLowerCase() != 'cancelled')
+            ActionButtonsWidget(
+              currentStatus: _displayStatus(),
+              onCancel: _cancelRequest,
+              onContact: _handleContact,
+              onMarkComplete: _handleMarkComplete,
+              onRelist: _handleRelist,
+            ),
         ],
       ),
     );
@@ -529,8 +519,8 @@ class _RequestStatusTrackingState extends State<RequestStatusTracking>
     final Color statusColor = _currentStatus == 'completed'
         ? AppTheme.successLight
         : _currentStatus == 'cancelled'
-        ? AppTheme.errorLight
-        : theme.colorScheme.primary;
+            ? AppTheme.errorLight
+            : theme.colorScheme.primary;
 
     const IconData headerIcon = Icons.event_available;
 
@@ -696,6 +686,33 @@ class _RequestStatusTrackingState extends State<RequestStatusTracking>
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildCancelledBanner(ThemeData theme) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(4.w),
+      decoration: BoxDecoration(
+        color: AppTheme.errorLight.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.errorLight.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.cancel_outlined, color: AppTheme.errorLight, size: 22),
+          SizedBox(width: 3.w),
+          Expanded(
+            child: Text(
+              'This request has been cancelled',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppTheme.errorLight,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
